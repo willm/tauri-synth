@@ -5,18 +5,23 @@
 
 mod cmd;
 use app::control::midi;
+use app::control::midi::{MidiMessage, NoteOn};
 use app::core;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 use tauri::WebviewMut;
 
-fn handle_note_on(synth_sender: &Sender<[f32; 3]>, wv_clone: &mut WebviewMut, note: u8) {
-  let freq = midi::midi_to_freq(note);
+fn handle_note_on(
+  synth_sender: &Sender<[f32; 3]>,
+  wv_clone: &mut WebviewMut,
+  note_on: midi::NoteOn,
+) {
+  let freq = midi::midi_to_freq(note_on.note);
   synth_sender.send([freq, freq + 3.0, freq - 1.0]).unwrap();
   tauri::event::emit(
     wv_clone,
     String::from("message"),
-    Some(format!("NOTE ON midi note {} {}Hz", note, freq)),
+    Some(format!("NOTE ON midi note {} {}Hz", note_on.note, freq)),
   )
   .unwrap();
 }
@@ -32,10 +37,10 @@ fn main() {
         match midi::create_midi_connection(midi_sender) {
           Ok(_con) => loop {
             match midi_receiver.recv().unwrap() {
-              midi::MidiMessage::NoteOn { note, .. } => {
-                handle_note_on(&synth_sender, &mut wv_clone, note);
+              MidiMessage::NoteOn(note_on) => {
+                handle_note_on(&synth_sender, &mut wv_clone, note_on);
               }
-              midi::MidiMessage::NoteOff { note } => {
+              MidiMessage::NoteOff { note } => {
                 println!("NOTE OFF midi note {} {}Hz", note, midi::midi_to_freq(note));
               }
             };
@@ -45,9 +50,23 @@ fn main() {
             // nothing is available to send midi messages, so just trigger some
             // frequencies regularly
             loop {
-              handle_note_on(&synth_sender, &mut wv_clone, 60);
+              handle_note_on(
+                &synth_sender,
+                &mut wv_clone,
+                NoteOn {
+                  note: 60,
+                  velocity: 1,
+                },
+              );
               std::thread::sleep(std::time::Duration::from_secs(1));
-              handle_note_on(&synth_sender, &mut wv_clone, 64);
+              handle_note_on(
+                &synth_sender,
+                &mut wv_clone,
+                NoteOn {
+                  note: 64,
+                  velocity: 1,
+                },
+              );
               std::thread::sleep(std::time::Duration::from_secs(1));
             }
           }

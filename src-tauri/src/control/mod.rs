@@ -20,9 +20,9 @@ pub fn read_midi_input(
 
   loop {
     match rx.recv()? {
-      midi::MidiMessage::NoteOn { note, .. } => {
-        let freq = midi::midi_to_freq(note);
-        println!("NOTE ON midi note {} {}Hz", note, freq);
+      midi::MidiMessage::NoteOn(note_on) => {
+        let freq = midi::midi_to_freq(note_on.note);
+        println!("NOTE ON midi note {} {}Hz", note_on.note, freq);
         synth_sender.send([freq, freq + 3.0, freq - 1.0])?;
       }
       midi::MidiMessage::NoteOff { note } => {

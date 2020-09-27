@@ -7,8 +7,13 @@ pub fn midi_to_freq(midi_note: u8) -> f32 {
   2f32.powf(exp)
 }
 
+pub struct NoteOn {
+  pub note: u8,
+  pub velocity: u8,
+}
+
 pub enum MidiMessage {
-  NoteOn { note: u8, velocity: u8 },
+  NoteOn(NoteOn),
   NoteOff { note: u8 },
 }
 
@@ -54,7 +59,8 @@ pub fn create_midi_connection(
         if message[0] == note_on {
           if velocity > 0 {
             println!("about to send note on");
-            tx.send(MidiMessage::NoteOn { note, velocity }).unwrap();
+            tx.send(MidiMessage::NoteOn(NoteOn { note, velocity }))
+              .unwrap();
           } else {
             tx.send(MidiMessage::NoteOff { note }).unwrap();
           }
