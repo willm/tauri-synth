@@ -17,8 +17,10 @@ function App() {
   const [loaded, setLoaded] = useState<boolean>(false);
   useEffect(() => {
     if (tauriEvent && tauriEvent.listen) {
-      tauriEvent.listen("message", (evt: NoteOnEvent) => {
+      tauriEvent.listen("ready", (evt) => {
         setLoaded(true);
+      });
+      tauriEvent.listen("message", (evt: NoteOnEvent) => {
         setMidiNote(evt.payload.note);
       });
     }

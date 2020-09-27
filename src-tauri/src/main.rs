@@ -8,6 +8,7 @@ use app::control::midi::{MidiMessage, NoteOn};
 use app::core;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
+use tauri::event::emit as emit_js;
 use tauri::WebviewMut;
 
 fn handle_note_on(
@@ -17,7 +18,7 @@ fn handle_note_on(
 ) {
   let freq = midi::midi_to_freq(note_on.note);
   synth_sender.send([freq, freq + 3.0, freq - 1.0]).unwrap();
-  tauri::event::emit(webview, String::from("message"), Some(note_on)).unwrap();
+  emit_js(webview, String::from("message"), Some(note_on)).unwrap();
 }
 
 fn main() {
@@ -29,20 +30,24 @@ fn main() {
       thread::spawn(move || loop {
         let (midi_sender, midi_receiver) = channel::<midi::MidiMessage>();
         match midi::create_midi_connection(midi_sender) {
-          Ok(_midi_connection) => loop {
-            match midi_receiver.recv().unwrap() {
-              MidiMessage::NoteOn(note_on) => {
-                handle_note_on(&synth_sender, &mut wv_clone, note_on);
-              }
-              MidiMessage::NoteOff { note } => {
-                println!("NOTE OFF midi note {} {}Hz", note, midi::midi_to_freq(note));
-              }
-            };
-            println!("EXITED loop");
-          },
+          Ok(_midi_connection) => {
+            emit_js(&mut wv_clone, String::from("ready"), Some(true)).unwrap();
+            loop {
+              match midi_receiver.recv().unwrap() {
+                MidiMessage::NoteOn(note_on) => {
+                  handle_note_on(&synth_sender, &mut wv_clone, note_on);
+                }
+                MidiMessage::NoteOff { note } => {
+                  println!("NOTE OFF midi note {} {}Hz", note, midi::midi_to_freq(note));
+                }
+              };
+              println!("EXITED loop");
+            }
+          }
           Err(_) => {
             // nothing is available to send midi messages, so just trigger some
             // frequencies regularly
+            emit_js(&mut wv_clone, String::from("ready"), Some(true)).unwrap();
             loop {
               handle_note_on(
                 &synth_sender,
