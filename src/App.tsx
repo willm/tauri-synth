@@ -1,37 +1,40 @@
 import React, { useState, useEffect } from "react";
-import logo from "./logo.svg";
 import "./App.css";
 import { Button } from "./components/Button";
-import { promisified } from "tauri/api/tauri";
-import { listen, emit } from "tauri/api/event";
+import { Keyboard } from "./components/Keyboard";
+import * as tauriEvent from "tauri/api/event";
+if (!(window as any).__TAURI_INVOKE_HANDLER__) {
+  (window as any).__TAURI_INVOKE_HANDLER__ = () => {};
+}
 
 function App() {
   const [message, setMessage] = useState<string>("");
   useEffect(() => {
-    listen("message", (evt) => {
-      setMessage(evt.payload as string);
-    });
+    if (tauriEvent && tauriEvent.listen) {
+      tauriEvent.listen("message", (evt) => {
+        setMessage(evt.payload as string);
+      });
+    }
   }, [message]);
   return (
     <div className="App">
       <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <h2>{message}</h2>
-        <Button
-          onClick={async () => {
-            listen("message", (evt) => {
-              setMessage(evt.payload as string);
-            });
-            emit("start-synth", "start please");
-            /*const result: string = await promisified({
-              cmd: "startSynth",
-              argument: "Hi Rust",
-            });
-            setMessage(result);*/
-          }}
-        >
-          Do it
-        </Button>
+        <div style={{ flexGrow: 1 }}>
+          <h2>{message}</h2>
+          <Button
+            onClick={async () => {
+              if (tauriEvent && tauriEvent.listen) {
+                tauriEvent.listen("message", (evt) => {
+                  setMessage(evt.payload as string);
+                });
+                tauriEvent.emit("start-synth", "start please");
+              }
+            }}
+          >
+            Do it
+          </Button>
+          <Keyboard></Keyboard>
+        </div>
       </header>
     </div>
   );

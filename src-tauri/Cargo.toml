@@ -12,7 +12,11 @@ build = "src/build.rs"
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = [ "derive" ] }
-tauri = { version = "0.9", features = [ "event" ] }
+tauri = { version = "0.9", features = [ "all-api" ] }
+cpal = "0.12.0"
+rand = "0.7.3"
+midir = "0.6.2"
+plotlib = "0.5.1"
 
 [target."cfg(windows)".build-dependencies]
 winres = "0.1"
