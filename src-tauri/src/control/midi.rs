@@ -1,4 +1,5 @@
 use midir::{Ignore, MidiInput, MidiInputConnection, MidiInputPort};
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::io::{stdin, stdout, Write};
 
@@ -7,6 +8,7 @@ pub fn midi_to_freq(midi_note: u8) -> f32 {
   2f32.powf(exp)
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct NoteOn {
   pub note: u8,
   pub velocity: u8,

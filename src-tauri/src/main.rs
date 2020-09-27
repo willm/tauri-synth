@@ -3,7 +3,6 @@
   windows_subsystem = "windows"
 )]
 
-mod cmd;
 use app::control::midi;
 use app::control::midi::{MidiMessage, NoteOn};
 use app::core;
@@ -13,17 +12,12 @@ use tauri::WebviewMut;
 
 fn handle_note_on(
   synth_sender: &Sender<[f32; 3]>,
-  wv_clone: &mut WebviewMut,
+  webview: &mut WebviewMut,
   note_on: midi::NoteOn,
 ) {
   let freq = midi::midi_to_freq(note_on.note);
   synth_sender.send([freq, freq + 3.0, freq - 1.0]).unwrap();
-  tauri::event::emit(
-    wv_clone,
-    String::from("message"),
-    Some(format!("NOTE ON midi note {} {}Hz", note_on.note, freq)),
-  )
-  .unwrap();
+  tauri::event::emit(webview, String::from("message"), Some(note_on)).unwrap();
 }
 
 fn main() {
@@ -35,7 +29,7 @@ fn main() {
       thread::spawn(move || loop {
         let (midi_sender, midi_receiver) = channel::<midi::MidiMessage>();
         match midi::create_midi_connection(midi_sender) {
-          Ok(_con) => loop {
+          Ok(_midi_connection) => loop {
             match midi_receiver.recv().unwrap() {
               MidiMessage::NoteOn(note_on) => {
                 handle_note_on(&synth_sender, &mut wv_clone, note_on);
@@ -72,32 +66,6 @@ fn main() {
           }
         };
       });
-    })
-    .invoke_handler(|webview, arg| {
-      use cmd::Cmd::*;
-      match serde_json::from_str(arg) {
-        Err(e) => Err(e.to_string()),
-        Ok(command) => {
-          match command {
-            // definitions for your custom commands from Cmd here
-            StartSynth {
-              argument,
-              callback,
-              error,
-            } => tauri::execute_promise(
-              webview,
-              move || {
-                //  your command code
-                println!("{}", argument);
-                Ok("Response from rust")
-              },
-              callback,
-              error,
-            ),
-          }
-          Ok(())
-        }
-      }
     })
     .build()
     .run();
