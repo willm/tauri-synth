@@ -1,9 +1,10 @@
 extern crate cpal;
+pub mod enveloppe;
+pub mod oscillators;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::sync::mpsc;
-pub mod enveloppe;
+use self::oscillators::sin;
 
-const PI: f32 = std::f32::consts::PI;
 pub fn start_synth() -> mpsc::Sender<[f32; 3]> {
     let (synth_sender, synth_receiver) = mpsc::channel::<[f32; 3]>();
     std::thread::spawn(move || {
@@ -21,11 +22,6 @@ pub fn start_synth() -> mpsc::Sender<[f32; 3]> {
     });
     synth_sender
 }
-
-fn sin(sample_clock: f32, sample_rate: f32, freq: f32) -> f32 {
-    (sample_clock * freq * 2.0 * PI / sample_rate).sin()
-}
-
 
 fn run<T>(
     device: &cpal::Device,
