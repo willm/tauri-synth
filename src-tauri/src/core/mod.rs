@@ -3,6 +3,7 @@ pub mod enveloppe;
 pub mod oscillators;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::sync::mpsc;
+use self::enveloppe::ADSREnveloppe;
 use self::oscillators::sin;
 
 pub fn start_synth() -> mpsc::Sender<[f32; 3]> {
@@ -33,7 +34,7 @@ fn run<T>(
     let sample_rate = config.sample_rate.0 as f32;
     let channels = config.channels as usize;
 
-    // Produce a sinusoid of maximum amplitude.
+    let mut env = ADSREnveloppe::new(sample_rate, 1., 1., 0.5, 1.);
     let mut sample_clock = 0f32;
     let mut freqs: [f32; 3] = [0.0, 0.0, 0.0];
     let mut velocity = 0_f32;
@@ -55,7 +56,7 @@ fn run<T>(
         if velocity < 1_f32 {
             velocity += 0.000_001;
         }
-        s
+        env.next_sample(s)
     };
 
     let err_fn = |err| eprintln!("an error occurred on stream: {}", err);

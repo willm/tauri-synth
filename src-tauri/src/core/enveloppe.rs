@@ -1,11 +1,4 @@
-struct ADSR {
-    attack: f32,
-    decay: f32,
-    sustain: f32,
-    release: f32,
-}
-
-struct Enveloppe {
+pub struct ADSREnveloppe {
     sample_rate: f32,
     tick: f32,
     attack: f32,
@@ -15,9 +8,9 @@ struct Enveloppe {
     note_off_received_at_tick: Option<f32>,
 }
 
-impl Enveloppe {
-    fn new(sample_rate: f32, attack: f32, decay: f32, sustain: f32, release: f32) -> Self {
-        Enveloppe {
+impl ADSREnveloppe {
+    pub fn new(sample_rate: f32, attack: f32, decay: f32, sustain: f32, release: f32) -> Self {
+        ADSREnveloppe {
             sample_rate,
             tick: 0.0,
             attack,
@@ -28,11 +21,11 @@ impl Enveloppe {
         }
     }
 
-    fn note_off(&mut self) {
+    pub fn note_off(&mut self) {
         self.note_off_received_at_tick = Some(self.tick);
     }
 
-    fn next_sample(&mut self, signal: f32) -> f32 {
+    pub fn next_sample(&mut self, signal: f32) -> f32 {
         // the equation for a straight line is y = mx + b;
         // m is the slope of the curve and is calculated as (change in y) / (change in x)
 
@@ -59,10 +52,10 @@ impl Enveloppe {
         }
 
         self.tick += 1.0;
-        let value = signal * velocity;
-        value
+        signal * velocity
     }
 }
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -72,7 +65,7 @@ mod tests {
   use plotlib::view::ContinuousView;
 
 
-  fn next_sample(env: &mut Enveloppe, samples: &mut Vec<f64>) -> f32 {
+  fn next_sample(env: &mut ADSREnveloppe, samples: &mut Vec<f64>) -> f32 {
       let contant_signal = 1.0_f32;
       let sample = &env.next_sample(contant_signal);
       assert!(1. >= *sample && (*sample >= 0.));
@@ -88,7 +81,7 @@ mod tests {
   fn test_envelope() {
       let mut data: Vec<f64> = vec![];
       let sample_rate = 44_100;
-      let mut env = Enveloppe::new(44_100.0, 1.0, 1.0, 0.5, 1.0);
+      let mut env = ADSREnveloppe::new(44_100.0, 1.0, 1.0, 0.5, 1.0);
       // start
       let sample = next_sample(&mut env, &mut data);
       assert_eq!(round_to_2(sample), 0.0_f32);
@@ -133,7 +126,7 @@ mod tests {
   fn test_envelope_2() {
       let mut data: Vec<f64> = vec![];
       let sample_rate = 44_100;
-      let mut env = Enveloppe::new(44_100.0, 1.0, 1.0, 0.2, 1.0);
+      let mut env = ADSREnveloppe::new(44_100.0, 1.0, 1.0, 0.2, 1.0);
       // start
       let sample = next_sample(&mut env, &mut data);
       assert_eq!(round_to_2(sample), 0.0_f32);
