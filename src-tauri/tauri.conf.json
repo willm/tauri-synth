@@ -40,7 +40,7 @@
       "exceptionDomain": ""
     },
     "allowlist": {
-      "all": true
+      "event": true
     },
     "window": {
       "title": "Tauri App",

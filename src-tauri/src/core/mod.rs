@@ -34,15 +34,14 @@ fn run<T>(
     let sample_rate = config.sample_rate.0 as f32;
     let channels = config.channels as usize;
 
-    let mut env = ADSREnveloppe::new(sample_rate, 1., 1., 0.5, 1.);
+    let mut env = ADSREnveloppe::new(sample_rate, 0.5, 0.05, 0., 0.);
     let mut sample_clock = 0f32;
     let mut freqs: [f32; 3] = [0.0, 0.0, 0.0];
-    let mut velocity = 0_f32;
     let mut next_value = move || {
         freqs = match rx.try_recv() {
             // try_recv tries to get a value without blocking
             Ok(v) => {
-                velocity = 0_f32;
+                env.reset();
                 v
             }
             _ => freqs,
@@ -51,10 +50,7 @@ fn run<T>(
         let mut s = 0f32;
         //s += sin(sample_clock, sample_rate, freqs[0]);
         for &f in freqs.iter() {
-            s += sin(sample_clock, sample_rate, f) * velocity;
-        }
-        if velocity < 1_f32 {
-            velocity += 0.000_001;
+            s += sin(sample_clock, sample_rate, f);
         }
         env.next_sample(s)
     };
