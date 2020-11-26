@@ -86,22 +86,19 @@ impl Processor for Envelope {
         }
 
         self.attack_delta = 0.05;
-        // self.decay_delta = 0.001;
         self.sustain_level = 0.0;
         self.release_delta = 0.01;
 
         match self.state {
             EnvelopeState::Attack => {
                 self.amplitude += self.attack_delta;
-                // println!("Attack {}", self.amplitude);
                 if self.amplitude >= 1.0 {
                     self.amplitude = 1.0;
                     self.state = EnvelopeState::Decay;
                 }
             }
             EnvelopeState::Decay => {
-                self.amplitude -= self.decay_delta * 0.1;
-                // println!("Decay {}", self.amplitude);
+                self.amplitude -= self.decay_delta;
                 if self.amplitude <= self.sustain_level {
                     if self.amplitude <= 0.0 {
                         self.state = EnvelopeState::Off;

@@ -35,9 +35,8 @@ fn main() {
 
             let params_clone = synth_params.clone();
             listen("sustain", move |decay: Option<String>| {
-                let decay_delta = decay.unwrap().parse::<f32>().unwrap();
-                let decay_delta = (1.0 - decay_delta) * 0.01;
-                println!("{:?}", decay_delta);
+                let decay_delta = 1.0 - decay.unwrap().parse::<f32>().unwrap();
+                let decay_delta = (decay_delta * 2.0) / 44100.0;
                 params_clone
                     .lock()
                     .unwrap()
@@ -81,7 +80,7 @@ fn main() {
                                     velocity: 1,
                                 },
                             );
-                            std::thread::sleep(std::time::Duration::from_secs(2));
+                            std::thread::sleep(std::time::Duration::from_secs(4));
                             handle_note_on(
                                 params_clone.clone(),
                                 &mut wv_clone,
@@ -90,7 +89,7 @@ fn main() {
                                     velocity: 1,
                                 },
                             );
-                            std::thread::sleep(std::time::Duration::from_secs(2));
+                            std::thread::sleep(std::time::Duration::from_secs(4));
                         }
                     }
                 };
