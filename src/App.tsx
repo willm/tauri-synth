@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import "./App.css";
-import { Keyboard } from "./components/Keyboard";
-import * as tauriEvent from "tauri/api/event";
+import React, { useState, useEffect } from 'react';
+import './App.css';
+import { Keyboard } from './components/Keyboard';
+import * as tauriEvent from 'tauri/api/event';
 if (!(window as any).__TAURI_INVOKE_HANDLER__) {
   (window as any).__TAURI_INVOKE_HANDLER__ = () => {};
 }
@@ -17,10 +17,10 @@ function App() {
   const [loaded, setLoaded] = useState<boolean>(false);
   useEffect(() => {
     if (tauriEvent && tauriEvent.listen) {
-      tauriEvent.listen("ready", (evt) => {
+      tauriEvent.listen('ready', (evt) => {
         setLoaded(true);
       });
-      tauriEvent.listen("message", (evt: NoteOnEvent) => {
+      tauriEvent.listen('message', (evt: NoteOnEvent) => {
         setMidiNote(evt.payload.note);
       });
     }
@@ -31,12 +31,23 @@ function App() {
         <div style={{ flexGrow: 1 }}>
           <input
             type="range"
-            min="0"
-            max="1"
+            min="1"
+            max="16"
             step="0.01"
-            style={{ backgroundColor: "#22222" }}
+            style={{ backgroundColor: '#22222' }}
             onChange={(e) => {
-              tauriEvent.emit("attack", e.target.value);
+              tauriEvent.emit('dist_amount', e.target.value);
+              console.log(e.target.value);
+            }}
+          ></input>
+          <input
+            type="range"
+            min="0"
+            max="16"
+            step="0.01"
+            style={{ backgroundColor: '#22222' }}
+            onChange={(e) => {
+              tauriEvent.emit('fm_amount', e.target.value);
               console.log(e.target.value);
             }}
           ></input>
@@ -45,9 +56,9 @@ function App() {
             min="0"
             max="1"
             step="0.01"
-            style={{ backgroundColor: "#22222" }}
+            style={{ backgroundColor: '#22222' }}
             onChange={(e) => {
-              tauriEvent.emit("decay", e.target.value);
+              tauriEvent.emit('attack', e.target.value);
               console.log(e.target.value);
             }}
           ></input>
@@ -56,9 +67,9 @@ function App() {
             min="0"
             max="1"
             step="0.01"
-            style={{ backgroundColor: "#22222" }}
+            style={{ backgroundColor: '#22222' }}
             onChange={(e) => {
-              tauriEvent.emit("sustain", e.target.value);
+              tauriEvent.emit('decay', e.target.value);
               console.log(e.target.value);
             }}
           ></input>
@@ -67,13 +78,28 @@ function App() {
             min="0"
             max="1"
             step="0.01"
-            style={{ backgroundColor: "#22222" }}
+            style={{ backgroundColor: '#22222' }}
             onChange={(e) => {
-              tauriEvent.emit("release", e.target.value);
+              tauriEvent.emit('sustain', e.target.value);
               console.log(e.target.value);
             }}
           ></input>
-          {loaded ? <Keyboard selectedKey={midiNote}></Keyboard> : <h2>Loading ...</h2>}
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            style={{ backgroundColor: '#22222' }}
+            onChange={(e) => {
+              tauriEvent.emit('release', e.target.value);
+              console.log(e.target.value);
+            }}
+          ></input>
+          {loaded ? (
+            <Keyboard selectedKey={midiNote}></Keyboard>
+          ) : (
+            <h2>Loading ...</h2>
+          )}
         </div>
       </header>
     </div>
