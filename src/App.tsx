@@ -26,7 +26,7 @@ interface FaderProps {
 }
 
 const FaderContainer = styled.div`
-  width: 19%;
+  width: 16%;
 `;
 
 function Fader(props: FaderProps) {
@@ -97,6 +97,22 @@ function App() {
                 }}
                 id="release"
                 name="release"
+              ></Fader>
+              <Fader
+                onChange={(e) => {
+                  tauriEvent.emit("fm_amount", e.target.value);
+                  console.log(e.target.value);
+                }}
+                id="fm_amount"
+                name="FM Amount"
+              ></Fader>
+              <Fader
+                onChange={(e) => {
+                  tauriEvent.emit("dist_amount", e.target.value);
+                  console.log(e.target.value);
+                }}
+                id="dist_amount"
+                name="Dist Amount"
               ></Fader>
               <Keyboard selectedKey={midiNote}></Keyboard>
             </div>
