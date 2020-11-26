@@ -131,7 +131,16 @@ fn main() {
                   velocity: 1,
                 },
               );
-              std::thread::sleep(std::time::Duration::from_secs(4));
+              std::thread::sleep(std::time::Duration::from_secs(1));
+              handle_note_off(
+                params_clone.clone(),
+                &mut wv_clone,
+                MidiNote {
+                  note: 60,
+                  velocity: 0,
+                },
+              );
+              std::thread::sleep(std::time::Duration::from_secs(3));
               handle_note_on(
                 params_clone.clone(),
                 &mut wv_clone,
@@ -140,7 +149,16 @@ fn main() {
                   velocity: 1,
                 },
               );
-              std::thread::sleep(std::time::Duration::from_secs(4));
+              std::thread::sleep(std::time::Duration::from_secs(1));
+              handle_note_off(
+                params_clone.clone(),
+                &mut wv_clone,
+                MidiNote {
+                  note: 64,
+                  velocity: 0,
+                },
+              );
+              std::thread::sleep(std::time::Duration::from_secs(3));
             }
           }
         };
