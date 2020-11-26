@@ -12,12 +12,14 @@ use tauri::event::emit as emit_js;
 use tauri::WebviewMut;
 
 fn handle_note_on(
-    synth_sender: &mut rume::InputStreamProducer,
+    frequency_sender: &mut rume::InputStreamProducer,
+    note_on_sender: &mut rume::InputStreamProducer,
     webview: &mut WebviewMut,
     note_on: midi::NoteOn,
 ) {
     let freq = midi::midi_to_freq(note_on.note);
-    synth_sender.enqueue(freq).unwrap();
+    frequency_sender.enqueue(freq).unwrap();
+    note_on_sender.enqueue(1.0).unwrap();
     emit_js(webview, String::from("message"), Some(note_on)).unwrap();
 }
 
@@ -26,7 +28,7 @@ fn main() {
         .setup(move |webview, _source| {
             // https://github.com/nklayman/theia/blob/examples/add-tauri/examples/tauri/src-tauri/src/main.rs#L19
             let mut wv_clone = webview.as_mut();
-            let mut synth_sender = core::start_synth();
+            let (mut synth_sender, mut note_on_sender) = core::start_synth();
             thread::spawn(move || loop {
                 let (midi_sender, midi_receiver) = channel::<midi::MidiMessage>();
                 match midi::create_midi_connection(midi_sender) {
@@ -35,7 +37,7 @@ fn main() {
                         loop {
                             match midi_receiver.recv().unwrap() {
                                 MidiMessage::NoteOn(note_on) => {
-                                    handle_note_on(&mut synth_sender, &mut wv_clone, note_on);
+                                    handle_note_on(&mut synth_sender, &mut note_on_sender, &mut wv_clone, note_on);
                                 }
                                 MidiMessage::NoteOff { note } => {
                                     println!(
@@ -54,7 +56,8 @@ fn main() {
                         emit_js(&mut wv_clone, String::from("ready"), Some(true)).unwrap();
                         loop {
                             handle_note_on(
-                                &mut synth_sender,
+                                &mut synth_sender, 
+                                &mut note_on_sender,
                                 &mut wv_clone,
                                 NoteOn {
                                     note: 60,
@@ -64,6 +67,7 @@ fn main() {
                             std::thread::sleep(std::time::Duration::from_secs(1));
                             handle_note_on(
                                 &mut synth_sender,
+                                &mut note_on_sender,
                                 &mut wv_clone,
                                 NoteOn {
                                     note: 64,
