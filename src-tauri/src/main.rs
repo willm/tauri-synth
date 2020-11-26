@@ -48,7 +48,7 @@ fn main() {
 
             let params_clone = synth_params.clone();
             listen("dist_amount", move |dist_amount: Option<String>| {
-                let amt = dist_amount.unwrap().parse::<f32>().unwrap();
+                let amt = dist_amount.unwrap().parse::<f32>().unwrap() + 0.01;
                 params_clone
                     .lock()
                     .unwrap()
@@ -59,7 +59,7 @@ fn main() {
 
             let params_clone = synth_params.clone();
             listen("fm_amount", move |fm_amount: Option<String>| {
-                let amt = fm_amount.unwrap().parse::<f32>().unwrap() + 0.01;
+                let amt = (fm_amount.unwrap().parse::<f32>().unwrap() + 0.01) * 16.0;
                 params_clone
                     .lock()
                     .unwrap()

@@ -68,6 +68,22 @@ function App() {
             <div style={{ height: '200px', display: 'flex' }}>
               <Fader
                 onChange={(e) => {
+                  tauriEvent.emit('fm_amount', e.target.value);
+                  console.log(e.target.value);
+                }}
+                id="fm_amount"
+                name="fm_amount"
+              ></Fader>
+              <Fader
+                onChange={(e) => {
+                  tauriEvent.emit('dist_amount', e.target.value);
+                  console.log(e.target.value);
+                }}
+                id="dist_amount"
+                name="dist_amount"
+              ></Fader>
+              <Fader
+                onChange={(e) => {
                   tauriEvent.emit('attack', e.target.value);
                   console.log(e.target.value);
                 }}
@@ -97,14 +113,6 @@ function App() {
                 }}
                 id="release"
                 name="release"
-              ></Fader>
-              <Fader
-                onChange={(e) => {
-                  tauriEvent.emit('delay_wet', e.target.value);
-                  console.log(e.target.value);
-                }}
-                id="delay-wet"
-                name="delay wet"
               ></Fader>
               <Keyboard selectedKey={midiNote}></Keyboard>
             </div>
