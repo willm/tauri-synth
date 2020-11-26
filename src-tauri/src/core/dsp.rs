@@ -2,6 +2,81 @@ use rume::*;
 
 use std::sync::{Arc, Mutex};
 
+#[derive(Debug, Clone)]
+pub struct Delay {
+    pub input: (DelaySampleInput, DelayTimeInput),
+    pub output: DelaySampleOutput,
+    sample: f32,
+    delay_ticks: f32,
+    sample_rate: u32,
+    memory: [f32; 44_100],
+    read_idx: f32,
+    write_idx: usize,
+    buffer_size: usize,
+}
+
+impl Default for Delay {
+    fn default() -> Delay {
+        Delay {
+            input: (DelaySampleInput, DelayTimeInput),
+            output: DelaySampleOutput,
+            sample: 0.0,
+            delay_ticks: 0.0,
+            sample_rate: 44_100,
+            memory: [0.0; 44_100],
+            read_idx: 0.0,
+            write_idx: 0,
+            buffer_size: 0,
+        }
+    }
+}
+
+#[rume::processor_input(Delay, DelayTimeInput)]
+fn set(proc: &mut Delay, time_ms: f32) {
+    proc.delay_ticks = (time_ms * 0.001) * proc.sample_rate as f32;
+    proc.buffer_size = proc.memory.len();
+}
+
+#[rume::processor_input(Delay, DelaySampleInput)]
+fn set(proc: &mut Delay, sample: f32) {
+    proc.sample = sample;
+}
+
+#[rume::processor_output(Delay, DelaySampleOutput)]
+fn get(proc: &mut Delay) -> f32 {
+    proc.sample
+}
+
+#[inline(always)]
+fn lerp(a: f32, b: f32, w: f32) -> f32 {
+    a + w * (b - a)
+}
+
+impl Processor for Delay {
+    fn prepare(&mut self, data: AudioConfig) {
+        self.sample_rate = data.sample_rate;
+    }
+
+    fn process(&mut self) {
+        let buffer_size = self.memory.len();
+
+        self.memory[self.write_idx] = self.sample;
+        self.write_idx = (self.write_idx + 1) % buffer_size;
+        self.read_idx = (self.write_idx as f32 - self.delay_ticks) % buffer_size as f32;
+
+        let read_idx_0 = self.read_idx as usize;
+        let read_idx_1 = (read_idx_0 + 1) % buffer_size;
+
+        let wet = lerp(
+            self.memory[read_idx_0],
+            self.memory[read_idx_1],
+            self.read_idx % 1.0,
+        );
+
+        self.sample = lerp(self.sample, wet, 0.3);
+    }
+}
+
 #[rume::processor]
 pub struct Distortion {
     #[rume::processor_sample]
@@ -13,6 +88,8 @@ pub struct Distortion {
 
 impl Processor for Distortion {
     fn prepare(&mut self, _: AudioConfig) {}
+
+    #[inline(always)]
     fn process(&mut self) {
         self.sample = (self.amount * self.sample).tanh();
     }
@@ -33,26 +110,22 @@ pub struct Sine {
     sample: f32,
 
     phase: [f32; 2],
-    sample_rate: u32,
+    inv_sample_rate: f32,
 }
 
 impl Processor for Sine {
     fn prepare(&mut self, data: AudioConfig) {
-        self.sample_rate = data.sample_rate;
+        self.inv_sample_rate = 1.0 / data.sample_rate as f32;
     }
 
     fn process(&mut self) {
         const TWO_PI: f32 = 2.0_f32 * std::f32::consts::PI;
 
-        let increment = TWO_PI * self.frequency * (1.0_f32 / self.sample_rate as f32);
+        let increment = TWO_PI * self.frequency * self.inv_sample_rate;
         self.phase[0] = (self.phase[0] + increment) % TWO_PI;
         self.sample = self.phase[0].sin();
 
-        let increment = TWO_PI
-            * self.frequency
-            * (1.0_f32 / self.sample_rate as f32)
-            * self.sample
-            * self.amount;
+        let increment = TWO_PI * self.frequency * self.inv_sample_rate * self.sample * self.amount;
         self.phase[1] = (self.phase[1] + increment) % TWO_PI;
         self.sample += self.phase[1].sin();
 
@@ -293,6 +366,8 @@ pub fn build_graph() -> (
             env: Envelope::default(),
             sine: Sine::default(),
             dist: Distortion::default(),
+            dly: Delay::default(),
+            val: Value::new(125.0),
         },
         connections: {
             freq.output    ->  sine.input.0,
@@ -309,7 +384,9 @@ pub fn build_graph() -> (
 
             sine.output     ->  dist.input.0,
             dist_amt.output ->  dist.input.1,
-            dist.output     ->  audio_out.input,
+            dist.output     ->  dly.input.0,
+            val.output      ->  dly.input.1,
+            dly.output      ->  audio_out.input,
         }
     };
 
