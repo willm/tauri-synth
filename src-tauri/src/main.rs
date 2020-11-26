@@ -34,14 +34,48 @@ fn main() {
             let synth_params = core::start_synth();
 
             let params_clone = synth_params.clone();
-            listen("sustain", move |decay: Option<String>| {
-                let decay_delta = 1.0 - decay.unwrap().parse::<f32>().unwrap();
-                let decay_delta = (decay_delta * 2.0) / 44100.0;
+            listen("attack", move |attack: Option<String>| {
+                let attack_time_in_seconds = (f32::powf(attack.unwrap().parse::<f32>().unwrap(), 3.5) * 1.99) + 0.01;
+                let attack_delta = 1.0 / (attack_time_in_seconds * 44100.0);
+                params_clone
+                    .lock()
+                    .unwrap()
+                    .attack_producer
+                    .enqueue(attack_delta)
+                    .unwrap();
+            });
+
+            let params_clone = synth_params.clone();
+            listen("decay", move |decay: Option<String>| {
+                let decay_time_in_seconds = (f32::powf(1.0 - decay.unwrap().parse::<f32>().unwrap(), 3.5) * 1.99) + 0.01;
+                let decay_delta = 1.0 / (decay_time_in_seconds * 44100.0);
+                params_clone
+                    .lock()
+                    .unwrap()
+                    .decay_producer
+                    .enqueue(decay_delta)
+                    .unwrap();
+            });
+
+            let params_clone = synth_params.clone();
+            listen("sustain", move |sustain: Option<String>| {
                 params_clone
                     .lock()
                     .unwrap()
                     .sustain_producer
-                    .enqueue(decay_delta)
+                    .enqueue(sustain.unwrap().parse::<f32>().unwrap())
+                    .unwrap();
+            });
+
+            let params_clone = synth_params.clone();
+            listen("release", move |release: Option<String>| {
+                let release_time_in_seconds = (f32::powf(1.0 - release.unwrap().parse::<f32>().unwrap(), 3.5) * 1.99) + 0.01;
+                let release_delta = 1.0 / (release_time_in_seconds * 44100.0);
+                params_clone
+                    .lock()
+                    .unwrap()
+                    .release_producer
+                    .enqueue(release_delta)
                     .unwrap();
             });
 
