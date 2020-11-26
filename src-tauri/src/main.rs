@@ -3,22 +3,26 @@
     windows_subsystem = "windows"
 )]
 
-use app::control::midi;
 use app::control::midi::{MidiMessage, NoteOn};
 use app::core;
-use std::sync::mpsc::{channel, Sender};
+use app::{control::midi, core::SharedSynthParams};
+use std::sync::mpsc::channel;
 use std::thread;
 use tauri::event::{emit as emit_js, listen};
 use tauri::WebviewMut;
 
 fn handle_note_on(
-    synth_params: &mut core::SynthParams,
+    synth_params: SharedSynthParams,
     webview: &mut WebviewMut,
     note_on: midi::NoteOn,
 ) {
     let freq = midi::midi_to_freq(note_on.note);
-    synth_params.freq_producer.enqueue(freq).unwrap();
-    synth_params.note_on_producer.enqueue(1.0).unwrap();
+    {
+        let mut params = synth_params.lock().unwrap();
+        params.freq_producer.enqueue(freq).unwrap();
+        params.note_on_producer.enqueue(1.0).unwrap();
+        params.note_on_producer.enqueue(0.0).unwrap();
+    }
     emit_js(webview, String::from("message"), Some(note_on)).unwrap();
 }
 
@@ -27,14 +31,22 @@ fn main() {
         .setup(move |webview, _source| {
             // https://github.com/nklayman/theia/blob/examples/add-tauri/examples/tauri/src-tauri/src/main.rs#L19
             let mut wv_clone = webview.as_mut();
-            let mut synth_params = core::start_synth();
+            let synth_params = core::start_synth();
 
-            listen("sustain",  |sustain:Option<String>| {
-                // println!("{:?}", sustain.unwrap());
-                let sustain_val = sustain.unwrap().parse::<f32>().unwrap();
-                synth_params.sustain_producer.enqueue(sustain_val).unwrap();
+            let params_clone = synth_params.clone();
+            listen("sustain", move |decay: Option<String>| {
+                let decay_delta = decay.unwrap().parse::<f32>().unwrap();
+                let decay_delta = (1.0 - decay_delta) * 0.01;
+                println!("{:?}", decay_delta);
+                params_clone
+                    .lock()
+                    .unwrap()
+                    .sustain_producer
+                    .enqueue(decay_delta)
+                    .unwrap();
             });
 
+            let params_clone = synth_params.clone();
             thread::spawn(move || loop {
                 let (midi_sender, midi_receiver) = channel::<midi::MidiMessage>();
                 match midi::create_midi_connection(midi_sender) {
@@ -43,7 +55,7 @@ fn main() {
                         loop {
                             match midi_receiver.recv().unwrap() {
                                 MidiMessage::NoteOn(note_on) => {
-                                    handle_note_on(&mut synth_params, &mut wv_clone, note_on);
+                                    handle_note_on(params_clone.clone(), &mut wv_clone, note_on);
                                 }
                                 MidiMessage::NoteOff { note } => {
                                     println!(
@@ -62,23 +74,23 @@ fn main() {
                         emit_js(&mut wv_clone, String::from("ready"), Some(true)).unwrap();
                         loop {
                             handle_note_on(
-                                &mut synth_params,
+                                params_clone.clone(),
                                 &mut wv_clone,
                                 NoteOn {
                                     note: 60,
                                     velocity: 1,
                                 },
                             );
-                            std::thread::sleep(std::time::Duration::from_secs(1));
+                            std::thread::sleep(std::time::Duration::from_secs(2));
                             handle_note_on(
-                                &mut synth_params,
+                                params_clone.clone(),
                                 &mut wv_clone,
                                 NoteOn {
                                     note: 64,
                                     velocity: 1,
                                 },
                             );
-                            std::thread::sleep(std::time::Duration::from_secs(1));
+                            std::thread::sleep(std::time::Duration::from_secs(2));
                         }
                     }
                 };
