@@ -29,6 +29,11 @@ function App() {
     <div className="App">
       <header className="App-header">
         <div style={{ flexGrow: 1 }}>
+          <input type="range" min="0" max="1" step="0.01" style={{backgroundColor:"#22222"}} onChange={(e) => {
+            tauriEvent.emit("sustain", e.target.value);
+            console.log(e.target.value);
+          }}>
+          </input>
           {loaded ? (
             <Keyboard selectedKey={midiNote}></Keyboard>
           ) : (

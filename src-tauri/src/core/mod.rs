@@ -63,7 +63,7 @@ impl Processor for Envelope {
 
         self.attack_delta = 0.0001;
         self.decay_delta = 0.0001;
-        self.sustain_level = 0.2;
+        self.sustain_level = 0.0;
         self.release_delta = 0.01;
 
         match self.state {
@@ -77,8 +77,12 @@ impl Processor for Envelope {
             EnvelopeState::Decay => {
                 self.amplitude -= self.decay_delta;
                 if self.amplitude <= self.sustain_level {
-                    self.amplitude = self.sustain_level;
-                    self.state = EnvelopeState::Sustain;
+                    if self.amplitude <= 0.0 {
+                        self.state = EnvelopeState::Off;
+                    } else {
+                        self.amplitude = self.sustain_level;
+                        self.state = EnvelopeState::Sustain;
+                    }
                 }
             },
             EnvelopeState::Sustain => {
@@ -100,18 +104,19 @@ impl Processor for Envelope {
 
 fn build_graph() -> (
     rume::SignalChain,
-    rume::InputStreamProducer,
-    rume::InputStreamProducer,
+    SynthParams,
     rume::OutputStreamConsumer,
 ) {
-    let (frequency_producer, frequency_consumer) = rume::input!(FREQUENCY_ENDPOINT);
+    let (freq_producer, freq_consumer) = rume::input!(FREQUENCY_ENDPOINT);
     let (note_on_producer, note_on_consumer) = rume::input!(NOTE_ON_ENDPOINT);
+    let (sustain_producer, sustain_consumer) = rume::input!(SUSTAIN_ENDPOINT);
     let (audio_out_producer, audio_out_consumer) = rume::output!(AUDIO_OUT_ENDPOINT);
 
     let beep = rume::graph! {
         endpoints: {
-            freq: rume::InputEndpoint::new(frequency_consumer),
+            freq: rume::InputEndpoint::new(freq_consumer),
             note_on: rume::InputEndpoint::new(note_on_consumer),
+        sustain: rume::InputEndpoint::new(sustain_consumer),
             audio_out: rume::OutputEndpoint::new(audio_out_producer),
         },
         processors: {
@@ -122,16 +127,23 @@ fn build_graph() -> (
         connections: {
             freq.output    ->  sine.input.0,
             note_on.output ->  env.input.4,
+            sustain.output ->  env.input.2,
             env.output     ->  sine.input.1,
             sine.output    ->  audio_out.input,
         }
     };
 
-    (beep, frequency_producer, note_on_producer, audio_out_consumer)
+    (beep, SynthParams{freq_producer, note_on_producer, sustain_producer}, audio_out_consumer)
 }
 
-pub fn start_synth() -> (rume::InputStreamProducer, rume::InputStreamProducer) {
-    let (graph, freq_producer, note_on_producer, audio_consumer) = build_graph();
+pub struct SynthParams {
+    pub freq_producer: rume::InputStreamProducer,
+    pub note_on_producer: rume::InputStreamProducer,
+    pub sustain_producer: rume::InputStreamProducer,
+}
+
+pub fn start_synth() -> SynthParams {
+    let (graph, synth_params, audio_consumer) = build_graph();
 
     std::thread::spawn(move || {
         let host = cpal::default_host();
@@ -147,7 +159,7 @@ pub fn start_synth() -> (rume::InputStreamProducer, rume::InputStreamProducer) {
         }
     });
 
-    (freq_producer, note_on_producer)
+    synth_params
 }
 
 fn run<T>(
