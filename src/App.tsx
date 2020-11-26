@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import './App.css';
-import { Keyboard } from './components/Keyboard';
-import * as tauriEvent from 'tauri/api/event';
-import styled from 'styled-components';
+import React, { useState, useEffect } from "react";
+import "./App.css";
+import { Keyboard } from "./components/Keyboard";
+import * as tauriEvent from "tauri/api/event";
+import styled from "styled-components";
 if (!(window as any).__TAURI_INVOKE_HANDLER__) {
   (window as any).__TAURI_INVOKE_HANDLER__ = () => {};
 }
@@ -40,7 +40,7 @@ function Fader(props: FaderProps) {
         onChange={props.onChange}
         id={props.id}
       ></Slider>
-      <label style={{ width: '100%', height: '10%' }} htmlFor={props.id}>
+      <label style={{ width: "100%", height: "10%" }} htmlFor={props.id}>
         {props.name}
       </label>
     </FaderContainer>
@@ -52,10 +52,10 @@ function App() {
   const [loaded, setLoaded] = useState<boolean>(false);
   useEffect(() => {
     if (tauriEvent && tauriEvent.listen) {
-      tauriEvent.listen('ready', (evt) => {
+      tauriEvent.listen("ready", (evt) => {
         setLoaded(true);
       });
-      tauriEvent.listen('message', (evt: NoteOnEvent) => {
+      tauriEvent.listen("message", (evt: NoteOnEvent) => {
         setMidiNote(evt.payload.note);
       });
     }
@@ -63,28 +63,12 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <div style={{ flexGrow: 1, display: 'flex' }}>
+        <div style={{ flexGrow: 1, display: "flex" }}>
           {loaded ? (
-            <div style={{ height: '200px', display: 'flex' }}>
+            <div style={{ height: "200px", display: "flex" }}>
               <Fader
                 onChange={(e) => {
-                  tauriEvent.emit('fm_amount', e.target.value);
-                  console.log(e.target.value);
-                }}
-                id="fm_amount"
-                name="fm_amount"
-              ></Fader>
-              <Fader
-                onChange={(e) => {
-                  tauriEvent.emit('dist_amount', e.target.value);
-                  console.log(e.target.value);
-                }}
-                id="dist_amount"
-                name="dist_amount"
-              ></Fader>
-              <Fader
-                onChange={(e) => {
-                  tauriEvent.emit('attack', e.target.value);
+                  tauriEvent.emit("attack", e.target.value);
                   console.log(e.target.value);
                 }}
                 id="attack"
@@ -92,7 +76,7 @@ function App() {
               ></Fader>
               <Fader
                 onChange={(e) => {
-                  tauriEvent.emit('decay', e.target.value);
+                  tauriEvent.emit("decay", e.target.value);
                   console.log(e.target.value);
                 }}
                 id="decay"
@@ -100,7 +84,7 @@ function App() {
               ></Fader>
               <Fader
                 onChange={(e) => {
-                  tauriEvent.emit('sustain', e.target.value);
+                  tauriEvent.emit("sustain", e.target.value);
                   console.log(e.target.value);
                 }}
                 id="sustain"
@@ -108,7 +92,7 @@ function App() {
               ></Fader>
               <Fader
                 onChange={(e) => {
-                  tauriEvent.emit('release', e.target.value);
+                  tauriEvent.emit("release", e.target.value);
                   console.log(e.target.value);
                 }}
                 id="release"
