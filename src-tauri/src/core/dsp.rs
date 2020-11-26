@@ -3,6 +3,34 @@ use rume::*;
 use std::sync::{Arc, Mutex};
 
 #[rume::processor]
+pub struct Mixer {
+  #[rume::processor_input]
+  channel1: f32,
+  #[rume::processor_input]
+  channel2: f32,
+  #[rume::processor_input]
+  channel3: f32,
+
+  #[rume::processor_input]
+  amplitude: f32,
+
+  #[rume::processor_output]
+  sample: f32,
+}
+
+impl Processor for Mixer {
+  fn prepare(&mut self, _data: AudioConfig) {
+    
+  }
+
+  fn process(&mut self) {
+    self.sample = (self.channel1 +
+                   self.channel2 +
+                   self.channel3) * self.amplitude * (1.0/3.0);
+  }
+}
+
+#[rume::processor]
 pub struct Sine {
   #[rume::processor_input]
   frequency: f32,
@@ -10,21 +38,29 @@ pub struct Sine {
   #[rume::processor_input]
   amplitude: f32,
 
+  #[rume::processor_input]
+  frequency_offset: f32,
+
   #[rume::processor_output]
   sample: f32,
 
   phase: f32,
   sample_rate: u32,
+  inv_sample_rate: f32,
+  two_pi: f32,
 }
 
 impl Processor for Sine {
   fn prepare(&mut self, data: AudioConfig) {
     self.sample_rate = data.sample_rate;
+    self.inv_sample_rate = 1.0_f32 / self.sample_rate as f32;
+    self.amplitude = 1.0;
+    self.frequency_offset = 1.0;
+    self.two_pi = 2.0_f32 * std::f32::consts::PI;
   }
 
   fn process(&mut self) {
-    const TWO_PI: f32 = 2.0_f32 * std::f32::consts::PI;
-    let increment = TWO_PI * self.frequency * (1.0_f32 / self.sample_rate as f32);
+    let increment = self.two_pi * self.frequency * self.frequency_offset * self.inv_sample_rate;
     self.phase = (self.phase + increment) % TWO_PI;
     self.sample = self.phase.sin() * self.amplitude;
   }
@@ -181,18 +217,30 @@ pub fn build_graph() -> (
       },
       processors: {
           env: Envelope::default(),
-          sine: Sine::default(),
+          mixer: Mixer::default(),
+          sine1: Sine::default(),
+          sine2: Sine::default(),
+          sine3: Sine::default(),
+          sin2Offset: rume::Value::new(0.5),
+          sin3Offset: rume::Value::new(0.3),
       },
       connections: {
-          freq.output    ->  sine.input.0,
+            sin2Offset.output -> sine2.input.2,
+            sin3Offset.output -> sine3.input.2,
+          freq.output ->  sine1.input.0,
+          freq.output ->  sine2.input.0,
+          freq.output ->  sine3.input.0,
           note_on.output ->  env.input.4,
           note_off.output ->  env.input.5,
-          attack.output   ->  env.input.0,
-          decay.output   ->  env.input.1,
-          sustain.output   ->  env.input.2,
-          release.output   ->  env.input.3,
-          env.output     ->  sine.input.1,
-          sine.output    ->  audio_out.input,
+          attack.output ->  env.input.0,
+          decay.output ->  env.input.1,
+          sustain.output ->  env.input.2,
+          release.output ->  env.input.3,
+          env.output ->  sine3.input.1,
+          sine1.output -> sine2.input.1,
+          sine2.output -> sine3.input.1,
+          sine3.output -> audio_out.input, //mixer.input.2,
+          //mixer.output ->  audio_out.input,
       }
   };
 
