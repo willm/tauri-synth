@@ -7,15 +7,20 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use rume::Processor;
 use std::sync::mpsc;
 
-fn build_graph() -> (rume::SignalChain, rume::OutputStreamConsumer) {
-    let (producer, consumer) = rume::output!(AUDIO_OUT_ENDPOINT);
+fn build_graph() -> (
+    rume::SignalChain,
+    rume::InputStreamProducer,
+    rume::OutputStreamConsumer,
+) {
+    let (frequency_producer, frequency_consumer) = rume::input!(FREQUENCY_ENDPOINT);
+    let (audio_out_producer, audio_out_consumer) = rume::output!(AUDIO_OUT_ENDPOINT);
 
     let beep = rume::graph! {
         endpoints: {
-            audio_out: rume::OutputEndpoint::new(producer),
+            freq: rume::InputEndpoint::new(frequency_consumer),
+            audio_out: rume::OutputEndpoint::new(audio_out_producer),
         },
         processors: {
-            freq: rume::Value::new(220.0),
             amp: rume::Value::new(0.1),
             sine: rume::Sine::default(),
         },
@@ -25,13 +30,12 @@ fn build_graph() -> (rume::SignalChain, rume::OutputStreamConsumer) {
             sine.output  ->  audio_out.input,
         }
     };
-    (beep, consumer)
+
+    (beep, frequency_producer, audio_out_consumer)
 }
 
-pub fn start_synth() -> mpsc::Sender<[f32; 3]> {
-    let (synth_sender, synth_receiver) = mpsc::channel::<[f32; 3]>();
-
-    let (graph, consumer) = build_graph();
+pub fn start_synth() -> rume::InputStreamProducer {
+    let (graph, freq_producer, audio_consumer) = build_graph();
 
     std::thread::spawn(move || {
         let host = cpal::default_host();
@@ -41,52 +45,24 @@ pub fn start_synth() -> mpsc::Sender<[f32; 3]> {
         let config = device.default_output_config().unwrap();
 
         match config.sample_format() {
-            cpal::SampleFormat::F32 => {
-                run::<f32>(&device, &config.into(), synth_receiver, graph, consumer)
-            }
-            cpal::SampleFormat::I16 => {
-                run::<i16>(&device, &config.into(), synth_receiver, graph, consumer)
-            }
-            cpal::SampleFormat::U16 => {
-                run::<u16>(&device, &config.into(), synth_receiver, graph, consumer)
-            }
+            cpal::SampleFormat::F32 => run::<f32>(&device, &config.into(), graph, audio_consumer),
+            cpal::SampleFormat::I16 => run::<i16>(&device, &config.into(), graph, audio_consumer),
+            cpal::SampleFormat::U16 => run::<u16>(&device, &config.into(), graph, audio_consumer),
         }
     });
-    synth_sender
+
+    freq_producer
 }
 
 fn run<T>(
     device: &cpal::Device,
     config: &cpal::StreamConfig,
-    rx: std::sync::mpsc::Receiver<[f32; 3]>,
     mut graph: rume::SignalChain,
     mut consumer: rume::OutputStreamConsumer,
 ) where
     T: cpal::Sample,
 {
-    let sample_rate = config.sample_rate.0 as f32;
     let channels = config.channels as usize;
-
-    let mut env = ADSREnveloppe::new(sample_rate, 0.5, 0.05, 0., 0.);
-    let mut sample_clock = 0f32;
-    let mut freqs: [f32; 3] = [0.0, 0.0, 0.0];
-    let mut next_value = move || {
-        freqs = match rx.try_recv() {
-            // try_recv tries to get a value without blocking
-            Ok(v) => {
-                env.reset();
-                v
-            }
-            _ => freqs,
-        };
-        sample_clock = (sample_clock + 1.0) % sample_rate;
-        let mut s = 0f32;
-        //s += sin(sample_clock, sample_rate, freqs[0]);
-        for &f in freqs.iter() {
-            s += sin(sample_clock, sample_rate, f);
-        }
-        env.next_sample(s)
-    };
 
     graph.prepare(config.sample_rate.0.into());
 
